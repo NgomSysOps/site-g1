@@ -1,0 +1,45 @@
+- name: Installer et Configuere apache avec ansible sous linux
+  hosts: serveur1
+  remote_user: username
+  become: yes
+  tasks:
+    - name: Installation of Apache2 Server
+      apt: name=apache2 update_cache=yes state=latest
+ 
+    - name: Creating the site document root folder
+      file:
+        path: "/var/www/{{ http_host }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+ 
+    - name: Copy index file to servers
+      template:
+        src: "file/index-template.html"
+        dest: "/var/www/{{ http_host }}/index.html"
+
+    - name: Copy assets folder to servers
+      copy:
+        src: "file/assets"
+        dest: "/var/www/{{ http_host }}"
+ 
+    - name: Configuration of the virtuahHost file
+      template:
+        src: "file/apache-template.conf"
+        dest: "/etc/apache2/sites-available/{{ http_conf }}"
+ 
+    - name: Enable {{http_conf}} site
+      command: a2ensite {{ http_conf }}
+      notify: restart-apache
+ 
+    - name:  Allowing the HTTP port {{ http_port }} on UFW firewall
+      ufw:
+        rule: allow
+        port: "{{ http_port }}"
+        proto: tcp
+  handlers:
+    - name: restart-apache
+      service:
+        name: apache2
+        state: restarted
